@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="./epoch-0.8.4/tests/render/css/tests.css">
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script src="./epoch-0.8.4/dist/js/epoch.js"></script>
+        <link rel="stylesheet" type="text/css" href="./epoch-0.8.4/dist/css/epoch.css">
+
+        <script>
+            var nextTime = (function() {
+                var currentTime = parseInt(new Date().getTime() / 1000);
+                return function() { return currentTime++; }
+            })();
+        </script>
+    </head>
+    <body>
+        <div id="test-2" class="test">
+            <h2>2. Single Series Single Transition</h2>
+            <p>
+                Correctly render a single series plot of <code>y = sin(x) + 1</code>. When the button is pressed push a new data point to the chart and correctly animate/render the transiton.
+            </p>
+            <div class="epoch"></div>
+        </div>
+
+        <script>
+        $(function() {
+            var data = [{ label: 'A', values: [] }],
+                length = 40,
+                nextIndex = length;
+
+            for (var i = 0; i < length; i++) {
+                var x = i * 2 * Math.PI / length,
+                    y = Math.sin(x) + 1,
+                    time = nextTime();
+                data[0].values.push({time: time, y: y});
+            }
+
+            var chart = $('#test-2 .epoch').epoch({
+                type: 'time.area',
+                data: data
+            });
+
+            var setData = function(){
+              var x = nextIndex * 2 * Math.PI / length,
+                  y = Math.sin(x) + 1,
+                  time = nextTime();
+              nextIndex++;
+              chart.push([{ time: time, y: y }]);
+            }
+
+            setInterval(setData,1000);
+
+        });
+        </script>
+
+    </body>
+</html>
