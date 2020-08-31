@@ -1,208 +1,56 @@
-(function() {
-
-    // Quick data generator
-    Data = function() {
-        this.layers = []
-    };
-
-    Data.prototype.add = function(fn) {
-        fn = fn ? fn : function(x) { return x; };
-        this.layers.push(fn);
-        return this;
-    };
-
-    Data.prototype.get = function(domain, step) {
-        domain = domain ? domain : [0, 10];
-        step = step ? step : 1;
-
-        var data = []
-        for (var i = 0; i < this.layers.length; i++) {
-            layer = { label: String.fromCharCode(i + 65), values: [] };
-            for (var x = domain[0]; x < domain[1]; x += step) {
-                layer.values.push({ x: x, y: this.layers[i](x) });
-            }
-            data.push(layer);
+// データ範囲 左右別
+var leftRange = [-20, 40];
+var rightRange = [-5, 105];
+// 初期データ
+var data = [
+        {
+            label: "layer1",
+            range: leftRange,
+            values: [],
+        },
+        {
+            label: "layer2",
+            range: rightRange,
+            values: [],
         }
-        return data;
-    };
+    ]
+;
+// 初期化
+let chart = $('#myChart').epoch({
+    type: 'time.line',                         //グラフの種類
+    data: data,                                  //初期値
+    axes: ['bottom', 'left', 'right'],       //利用軸の選択
+    fps: 24,                                     //フレームレート
+    range: {                                     //軸の範囲
+        left: leftRange,
+        right: rightRange
+    },
+    queueSize: 1,   // キューサイズ ※push時、キューからあふれたデータは破棄される
+    windowSize: 20, // 表示から見切れるまでいくつデータを表示させるか
 
-    Data.prototype.random = function(entries, domain, range) {
-        entries = entries ? entries : 50;
-        domain = domain ? domain : [0, 100];
-        range = range ? range : [0, 100];
-
-        var values = [];
-        for (var i = 0; i < entries; i++) {
-            var x = (domain[1] - domain[0]) * Math.random() + domain[0],
-                y = (range[1] - range[0]) * Math.random() + range[1];
-            values.push({ x: x, y: y });
-        }
-
-        return [{ label: 'A', values: values }];
-    };
-
-    Data.prototype.multiRandom = function(numSeries, entries, domain, range) {
-        numSeries = numSeries ? numSeries : 3;
-        entries = entries ? entries : 50;
-        domain = domain ? domain : [0, 100];
-        range = range ? range : [0, 100];
-
-        var data = [];
-
-        for (var j = 0; j < numSeries; j++) {
-            var layer = { label: String.fromCharCode(65 + j), values: [] };
-            for (var i = 0; i < entries; i++) {
-                var x = (domain[1] - domain[0]) * Math.random() + domain[0],
-                    y = (range[1] - range[0]) * Math.random() + range[1];
-                layer.values.push({ x: x, y: y });
-            }
-            data.push(layer);
+    // 目盛りの設定。 timeは間隔秒数、他は目盛りの数
+    ticks: {time: 5, right: 5, left: 5},
+    // 目盛りの書式
+    tickFormats: {
+        bottom: function (d) {
+            return moment(d * 1000).format('HH:mm:ss');
+        },
+        left: function (d) {
+            return (d).toFixed(1) + " ℃";
+        },
+        right: function (d) {
+            return (d).toFixed(0) + " %";
         }
 
-        return data;
-    };
-
-    window.data = function() { return new Data(); };
-
-
-    // Quick real-time data generator
-    Time = function() {
-        Data.call(this);
-    };
-
-    Time.prototype = new Data()
-
-    Time.prototype.get = function(domain, step) {
-        var data = Data.prototype.get.apply(this, arguments),
-            time = parseInt(new Date().getTime() / 1000);
-
-        for (var i = 0; i < data[0].values.length; i++) {
-            for (var j = 0; j < this.layers.length; j++) {
-                delete data[j].values[i].x;
-                data[j].values[i].time = time + i;
-            }
-        }
-
-        this.currentTime = time;
-        this.lastX = domain[1];
-
-        return data;
-    };
-
-    Time.prototype.next = function(step) {
-        this.currentTime++;
-        this.lastX += (step ? step : 1);
-
-        var data = [];
-        for (var j = 0; j < this.layers.length; j++) {
-            data.push({ time: this.currentTime, y: this.layers[j](this.lastX) })
-        }
-
-        return data;
     }
+});
 
-    window.time = function() { return new Time(); };
-
-
-
-
-    window.nextTime = (function() {
-        var currentTime = parseInt(new Date().getTime() / 1000);
-        return function() { return currentTime++; }
-    })();
-
-
-    /*
-     * Normal distribution random histogram data generator.
-     */
-    var NormalData = function(layers) {
-        this.layers = layers;
-        this.timestamp = ((new Date()).getTime() / 1000)|0;
-    };
-
-    var normal = function() {
-        var U = Math.random(),
-            V = Math.random();
-        return Math.sqrt(-2*Math.log(U)) * Math.cos(2*Math.PI*V);
-    };
-
-    NormalData.prototype.sample = function() {
-        return parseInt(normal() * 12.5 + 50);
-    }
-
-    NormalData.prototype.rand = function() {
-        var histogram = {};
-
-        for (var i = 0; i < 1000; i ++) {
-            var r = this.sample();
-            if (!histogram[r]) {
-                histogram[r] = 1;
-            }
-            else {
-                histogram[r]++;
-            }
-        }
-
-        return histogram;
-    };
-
-    NormalData.prototype.history = function(entries) {
-        if (typeof(entries) != 'number' || !entries) {
-            entries = 60;
-        }
-
-        var history = [];
-        for (var k = 0; k < this.layers; k++) {
-            history.push({ label: String.fromCharCode(65+k), values: [] });
-        }
-
-        for (var i = 0; i < entries; i++) {
-            for (var j = 0; j < this.layers; j++) {
-                history[j].values.push({time: this.timestamp, histogram: this.rand()});
-            }
-            this.timestamp++;
-        }
-
-        return history;
-    };
-
-    NormalData.prototype.next = function() {
-        var entry = [];
-        for (var i = 0; i < this.layers; i++) {
-            entry.push({ time: this.timestamp, histogram: this.rand() });
-        }
-        this.timestamp++;
-        return entry;
-    }
-
-    window.NormalData = NormalData;
-
-
-    /*
-     * Beta distribution histogram data generator.
-     */
-    var BetaData = function(alpha, beta, layers) {
-        this.alpha = alpha;
-        this.beta = beta;
-        this.layers = layers;
-        this.timestamp = ((new Date()).getTime() / 1000)|0;
-    };
-
-    BetaData.prototype = new NormalData();
-
-    BetaData.prototype.sample = function() {
-        var X = 0,
-            Y = 0;
-
-        for (var j = 1; j <= this.alpha; j++)
-            X += -Math.log(1 - Math.random());
-
-        for (var j = 1; j <= this.beta; j++)
-            Y += -Math.log(1 - Math.random());
-
-        return parseInt(100 * X / (X + Y));
-    }
-
-    window.BetaData = BetaData;
-
-})();
+// リアルタイム表示処理
+setInterval(function () {
+    chart.push(
+        [
+            {time: Date.now() / 1000, y: $("#temperature")[0].value,},
+            {time: Date.now() / 1000, y: $("#humidity")[0].value,},
+        ],
+    );
+}, 1000);

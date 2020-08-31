@@ -6,7 +6,7 @@
         <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
         <script src="./epoch-0.8.4/dist/js/epoch.js"></script>
         <link rel="stylesheet" type="text/css" href="./epoch-0.8.4/dist/css/epoch.css">
-
+        <script src="./node_modules/moment/moment.js"></script>
         <script>
             var nextTime = (function() {
                 var currentTime = parseInt(new Date().getTime() / 1000);
@@ -15,44 +15,111 @@
         </script>
     </head>
     <body>
-        <div id="test-2" class="test">
-            <h2>2. Single Series Single Transition</h2>
-            <p>
-                Correctly render a single series plot of <code>y = sin(x) + 1</code>. When the button is pressed push a new data point to the chart and correctly animate/render the transiton.
-            </p>
-            <div class="epoch"></div>
-        </div>
+      <style>
+        /* 線の色の変更 */
+        .epoch .category1 .line {
+          stroke: #dc3545;
+        }
+        .bg_temp{
+            width:40px;
+            height:20px;
+            background:#e63946;
+            color:#white;
+        }
+        .bg_humid{
+            width:40px;
+            height:20px;
+            background:#0099cc;
+        }
+        .epoch .category2 .line {
+          stroke: #17a2b8;
+        }
+     </style>
+     <div class="container">
+         <h1 class="text-center">現在の気温・湿度</h1>
+         <div class="row">
+             <div class="mx-auto">
+                 <p>
+                     <div class="bg_temp"><center>気温</center></div>
+                     <div class="bg_humid"><center>湿度</center></div>
+                 </p>
+             </div>
+             <div id="myChart" class="epoch" style="width: 100%; height: 200px">
+             </div>
+         </div>
+         <div class="row mt-3">
+             <div class="col-12">
+                 <form>
+                     <div class="form-group">
+                         <label for="temperature">気温（－１５℃～３５℃）</label>
+                         <input id="temperature" type="range" class="form-control-range" min="-15" max="35" value="20">
+                     </div>
+                     <div class="form-group">
+                         <label for="humidity">湿度（０％～１００％）</label>
+                         <input id="humidity" type="range" class="form-control-range" min="0" max="100">
+                     </div>
+                 </form>
+             </div>
+         </div>
+     </div>
+     <script>
+       // データ範囲 左右別
+       var leftRange = [-20, 40];
+       var rightRange = [-5, 105];
+       // 初期データ
+       var data = [
+               {
+                   label: "layer1",
+                   range: leftRange,
+                   values: [],
+               },
+               {
+                   label: "layer2",
+                   range: rightRange,
+                   values: [],
+               }
+           ]
+       ;
+       // 初期化
+       let chart = $('#myChart').epoch({
+           type: 'time.line',                         //グラフの種類
+           data: data,                                  //初期値
+           axes: ['bottom', 'left', 'right'],       //利用軸の選択
+           fps: 24,                                     //フレームレート
+           range: {                                     //軸の範囲
+               left: leftRange,
+               right: rightRange
+           },
+           queueSize: 1,   // キューサイズ ※push時、キューからあふれたデータは破棄される
+           windowSize: 20, // 表示から見切れるまでいくつデータを表示させるか
 
-        <script>
-        $(function() {
-            var data = [{ label: 'A', values: [] }],
-                length = 40,
-                nextIndex = length;
+           // 目盛りの設定。 timeは間隔秒数、他は目盛りの数
+           ticks: {time: 5, right: 5, left: 5},
+           // 目盛りの書式
+           tickFormats: {
+               bottom: function (d) {
+                   return moment(d * 1000).format('HH:mm:ss');
+               },
+               left: function (d) {
+                   return (d).toFixed(1) + " ℃";
+               },
+               right: function (d) {
+                   return (d).toFixed(0) + " %";
+               }
 
-            for (var i = 0; i < length; i++) {
-                var x = i * 2 * Math.PI / length,
-                    y = Math.sin(x) + 1,
-                    time = nextTime();
-                data[0].values.push({time: time, y: y});
-            }
+           }
+       });
 
-            var chart = $('#test-2 .epoch').epoch({
-                type: 'time.area',
-                data: data
-            });
-
-            var setData = function(){
-              var x = nextIndex * 2 * Math.PI / length,
-                  y = Math.sin(x) + 1,
-                  time = nextTime();
-              nextIndex++;
-              chart.push([{ time: time, y: y }]);
-            }
-
-            setInterval(setData,1000);
-
-        });
-        </script>
+       // リアルタイム表示処理
+       setInterval(function () {
+           chart.push(
+               [
+                   {time: Date.now() / 1000, y: $("#temperature")[0].value,},
+                   {time: Date.now() / 1000, y: $("#humidity")[0].value,},
+               ],
+           );
+       }, 1000);
+     </script>
 
     </body>
 </html>
